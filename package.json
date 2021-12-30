@@ -1,0 +1,35 @@
+{
+  "name": "company-ping-pong",
+  "version": "1.0.0",
+  "description": "Coming soon...",
+  "main": "index.js",
+  "scripts": {
+    "client": "rollup --config rollup.config.js",
+    "server": "node src/server/index.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zantinger/company-ping-pong.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zantinger/company-ping-pong/issues"
+  },
+  "homepage": "https://github.com/zantinger/company-ping-pong#readme",
+  "dependencies": {
+    "express": "^4.17.2",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  },
+  "devDependencies": {
+    "@babel/preset-react": "^7.16.5",
+    "@rollup/plugin-babel": "^5.3.0",
+    "@rollup/plugin-commonjs": "^21.0.1",
+    "@rollup/plugin-node-resolve": "^13.1.1",
+    "@rollup/plugin-replace": "^3.0.1",
+    "rollup": "^2.62.0"
+  }
+}
