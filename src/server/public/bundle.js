@@ -7675,9 +7675,58 @@
 
 	var ReactDom = reactDom.exports;
 
-	const App = () => /*#__PURE__*/React.createElement("h1", null, "Hello World");
+	const socket = io();
+	socket.on('myRoom1', value => {
+	  console.log('value: ', value);
+	});
+	socket.on("message", message => {
+	  console.log(message);
+	});
 
-	ReactDom.render( /*#__PURE__*/React.createElement(App, null), document.getElementById('app'));
+	const App = () => {
+	  const [messages, setMessages] = react.exports.useState(["hallo"]);
+	  const [newMessage, setNewMessage] = react.exports.useState("");
+	  const [room, setRoom] = react.exports.useState("");
+	  react.exports.useEffect(() => {
+	    socket.on('roomConnection', roomHandler);
+	    socket.on('chatMessage', chatMessageHandler);
+	    return () => [socket.off('roomConnection', roomHandler), socket.off('chatMessage', chatMessageHandler)];
+	  });
+
+	  const roomHandler = user => setRoom(user.room);
+
+	  const chatMessageHandler = message => setMessages(old => [...old, message]);
+
+	  const clickHandler = () => {
+	    socket.emit('chatMessage', newMessage);
+	    setNewMessage("");
+	  };
+
+	  const selectRoomHandler = () => {
+	    socket.emit("roomConnection", {
+	      name: "Michael",
+	      room: 'myRoom1'
+	    });
+	  };
+
+	  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", null, "Hello World"), /*#__PURE__*/React.createElement("h2", null, 'Room: ' + room), /*#__PURE__*/React.createElement("button", {
+	    onClick: selectRoomHandler
+	  }, "Enter room 1"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("input", {
+	    type: "text",
+	    value: newMessage,
+	    onChange: ({
+	      target: {
+	        value
+	      }
+	    }) => setNewMessage(value)
+	  }), /*#__PURE__*/React.createElement("button", {
+	    onClick: clickHandler
+	  }, "Send")), /*#__PURE__*/React.createElement("ul", null, messages.map((msg, index) => /*#__PURE__*/React.createElement("li", {
+	    key: index
+	  }, msg))));
+	};
+
+	ReactDom.render( /*#__PURE__*/React.createElement(App, null), document.getElementById("app"));
 
 })();
 //# sourceMappingURL=bundle.js.map
