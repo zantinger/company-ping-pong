@@ -6,6 +6,7 @@ import { dirname } from "path";
 import { Server } from "socket.io";
 import { of, fromEvent } from "rxjs";
 import { map, switchMap, mergeMap, takeUntil } from "rxjs/operators";
+import { positionSubjects$, keyCodeHandler } from "./gameData.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -53,33 +54,51 @@ function listenOnConnect(event) {
   );
 }
 
-connection$.subscribe(async({ io, client }) => {
-  const x = await io.allSockets()
+connection$.subscribe(async ({ io, client }) => {
+  const x = await io.allSockets();
 });
 
+const users = [];
 
-const users = []
+listenOnConnect("roomConnection").subscribe(({ io, client, data }) => {
+  const user = { ...data, id: client.id };
+  users.push(user);
 
-listenOnConnect('roomConnection')
-  .subscribe(({io, client, data }) => {    
-    const user = {...data, id: client.id}
-    users.push(user)
 
-    client.join(user.room)
-    client.to(user.room).emit("message", `Message to all except me`)
-    io.in(user.room).emit('message', 'Message to all')
+  client.join(user.room);
+  client.to(user.room).emit("message", `Message to all except me`);
+  io.in(user.room).emit("message", "Message to all");
 
-    io.in(user.room).emit('roomConnection', data)
-  })
+  io.in(user.room).emit("roomConnection", data);
+});
 
-listenOnConnect('chatMessage')
-  .subscribe(({io, client, data}) => {
-    console.log(users)
-    console.log(client.id)
-    const user = users.find(user => user.id === client.id)
+listenOnConnect("chatMessage").subscribe(({ io, client, data }) => {
+  const user = users.find((user) => user.id === client.id);
 
-    io.in(user.room).emit('chatMessage', data)
-  })
+  io.in(user.room).emit("chatMessage", data);
+});
 
+listenOnConnect("playerData").subscribe(({ io, client, data }) => {
+  if (users.length === 0) return;
+
+  const [keyCode, direction] = data;
+  const user = users.find((user) => user.id === client.id);
+
+  const player = users[0].id === client.id ? "player1" : "player2";
+
+  io.in(user.room).emit("playerData", { player, keyCode, direction });
+});
+
+listenOnConnect("gameMessage").subscribe(({ io, client, data }) => {
+  const user = users.find((user) => user.id === client.id);
+
+  if (data.type === "START") {
+    positionSubjects$.subscribe((ps) => {
+      io.in(user.room).emit("gameMessage", ps);
+    });
+  } else if (data.type === 'KEY_CODE') {
+    keyCodeHandler(data)
+  }
+});
 
 server.listen(3000, () => console.log("Listen on port 3000"));

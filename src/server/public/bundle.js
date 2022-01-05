@@ -7675,23 +7675,176 @@
 
 	var ReactDom = reactDom.exports;
 
+	// Game
+	const canvas = document.getElementById('canvas');
+	const ctx = canvas.getContext('2d');
+	const netWidth = 4;
+	const netHeight = canvas.height;
+	const paddleWidth = 10;
+	const paddleHeight = 100;
+	const net = {
+	  x: canvas.width / 2 - netWidth / 2,
+	  y: 0,
+	  width: netWidth,
+	  height: netHeight,
+	  color: "#FFF"
+	};
+	let player1 = {
+	  position: [0, 0],
+	  width: paddleWidth,
+	  height: paddleHeight,
+	  color: '#FFF',
+	  score: 0
+	};
+	let player2 = { ...player1
+	};
+	let ball = {
+	  position: [0, 0],
+	  radius: 7,
+	  speed: 7,
+	  color: '#05EDFF'
+	};
+
+	function drawNet() {
+	  ctx.fillStyle = net.color; // syntax --> fillRect(x, y, width, height)
+
+	  ctx.fillRect(net.x, net.y, net.width, net.height);
+	}
+
+	function drawScore(x, y, score) {
+	  ctx.fillStyle = '#fff';
+	  ctx.font = '35px sans-serif'; // syntax --> fillText(text, x, y)
+
+	  ctx.fillText(score, x, y);
+	}
+
+	function drawPaddle(player) {
+	  ctx.fillStyle = player.color;
+	  ctx.fillRect(player.position[0], player.position[1], player.width, player.height);
+	}
+
+	function drawBall(position, radius, color) {
+	  // console.log('pos ', position)
+	  ctx.fillStyle = color;
+	  ctx.beginPath(); // syntax --> arc(x, y, radius, startAngle, endAngle, antiClockwise_or_not)
+
+	  ctx.arc(position[0], position[1], radius, 0, Math.PI * 2, true); // π * 2 Radians = 360 degrees
+
+	  ctx.closePath();
+	  ctx.fill();
+	}
+
+	function onKeyDown({
+	  keyCode,
+	  player
+	}) {
+	  switch (keyCode) {
+	    case 38:
+	      player === 'player1' ? player1.upArrowPressed = true : player2.upArrowPressed = true;
+	      break;
+
+	    case 40:
+	      player === 'player1' ? player1.downArrowPressed = true : player2.downArrowPressed = true;
+	      break;
+	  }
+	}
+
+	function onKeyUp({
+	  keyCode,
+	  player
+	}) {
+	  switch (keyCode) {
+	    case 38:
+	      player === 'player1' ? player1.upArrowPressed = false : player2.upArrowPressed = false;
+	      break;
+
+	    case 40:
+	      player === 'player1' ? player1.downArrowPressed = false : player2.downArrowPressed = false;
+	      break;
+	  }
+	}
+
+
+	function render() {
+	  // set a style
+	  ctx.fillStyle = "#000";
+	  /* whatever comes below this acquires black color (#000). */
+	  // draws the black board
+
+	  ctx.fillRect(0, 0, canvas.width, canvas.height); // draw net
+
+	  drawNet(); // draw user score
+
+	  drawScore(canvas.width / 4, canvas.height / 6, player1.score); // draw player2 score
+
+	  drawScore(3 * canvas.width / 4, canvas.height / 6, player2.score); // draw user paddle
+
+	  drawPaddle(player1);
+	  drawPaddle(player2); // draw ball
+
+	  drawBall(ball.position, ball.radius, ball.color);
+	} // gameLoop
+
+
+	function gameLoop() {
+	  render();
+	  requestAnimationFrame(gameLoop);
+	}
+
+	const runPingPong = gameLoop;
+
+	const setPlayerData = gameObjects => {
+	  let [_player1, _player2, _ball] = gameObjects;
+	  player1 = { ...player1,
+	    ..._player1
+	  };
+	  player2 = { ...player2,
+	    ..._player2
+	  };
+	  ball = { ...ball,
+	    ..._ball
+	  };
+	};
+
 	const socket = io();
-	socket.on('myRoom1', value => {
-	  console.log('value: ', value);
+	socket.on('myRoom1', value => {// console.log('value: ', value)
 	});
-	socket.on("message", message => {
-	  console.log(message);
-	});
+	socket.on("message", message => {// console.log(message);
+	}); // App
 
 	const App = () => {
 	  const [messages, setMessages] = react.exports.useState(["hallo"]);
 	  const [newMessage, setNewMessage] = react.exports.useState("");
 	  const [room, setRoom] = react.exports.useState("");
 	  react.exports.useEffect(() => {
+	    window.addEventListener('keydown', keyDownHandler);
+	    window.addEventListener('keyup', keyUpHandler);
 	    socket.on('roomConnection', roomHandler);
 	    socket.on('chatMessage', chatMessageHandler);
-	    return () => [socket.off('roomConnection', roomHandler), socket.off('chatMessage', chatMessageHandler)];
+	    socket.on('playerData', playerDataHandler);
+	    socket.on('gameMessage', gameMessageHandler);
+	    return () => [socket.off('roomConnection', roomHandler), socket.off('chatMessage', chatMessageHandler), socket.off('playerData', playerDataHandler), socket.off('gameMessage', gameMessageHandler), window.removeEventListener('keydown', keyDownHandler), window.removeEventListener('keyup', keyUpHandler)];
+	  }, []);
+
+	  const gameMessageHandler = gameObjects => {
+	    console.log(gameObjects);
+	    setPlayerData(gameObjects);
+	  };
+
+	  const keyUpHandler = ({
+	    keyCode
+	  }) => socket.emit('playerData', keyCode, 'UP');
+
+	  const keyDownHandler = ({
+	    keyCode
+	  }) => socket.emit('gameMessage', {
+	    type: 'KEY_CODE',
+	    keyCode
 	  });
+
+	  const playerDataHandler = data => {
+	    data && data.direction === 'UP' ? onKeyUp(data) : onKeyDown(data);
+	  };
 
 	  const roomHandler = user => setRoom(user.room);
 
@@ -7721,12 +7874,17 @@
 	    }) => setNewMessage(value)
 	  }), /*#__PURE__*/React.createElement("button", {
 	    onClick: clickHandler
-	  }, "Send")), /*#__PURE__*/React.createElement("ul", null, messages.map((msg, index) => /*#__PURE__*/React.createElement("li", {
+	  }, "Send"), /*#__PURE__*/React.createElement("button", {
+	    onClick: () => socket.emit('gameMessage', {
+	      type: 'START'
+	    })
+	  }, "Start Game")), /*#__PURE__*/React.createElement("ul", null, messages.map((msg, index) => /*#__PURE__*/React.createElement("li", {
 	    key: index
 	  }, msg))));
 	};
 
 	ReactDom.render( /*#__PURE__*/React.createElement(App, null), document.getElementById("app"));
+	runPingPong();
 
 })();
 //# sourceMappingURL=bundle.js.map
