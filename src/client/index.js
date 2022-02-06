@@ -24,59 +24,78 @@ const App = () => {
   useEffect(() => {
     window.addEventListener('keydown', keyDownHandler);
     window.addEventListener('keyup', keyUpHandler);
-    socket.on('roomConnection', roomHandler)
-    socket.on('chatMessage', chatMessageHandler)
-    socket.on('playerData', playerDataHandler)
-    socket.on('gameMessage', gameMessageHandler)
+    socket.on('develop', devLog)
+    socket.on('gameData', gameDataHandler)
+    // socket.on('roomConnection', roomHandler)
+    // socket.on('chatMessage', chatMessageHandler)
+    // socket.on('playerData', playerDataHandler)
+    // socket.on('gameMessage', gameMessageHandler)
 
     return () => [
-      socket.off('roomConnection', roomHandler),
-      socket.off('chatMessage', chatMessageHandler),
-      socket.off('playerData', playerDataHandler),
-      socket.off('gameMessage', gameMessageHandler),
+      // socket.off('roomConnection', roomHandler),
+      // socket.off('chatMessage', chatMessageHandler),
+      // socket.off('playerData', playerDataHandler),
+      // socket.off('gameMessage', gameMessageHandler),
+      socket.off('gameData', gameDataHandler),
+      socket.off('develop', devLog),
       window.removeEventListener('keydown', keyDownHandler),
       window.removeEventListener('keyup', keyUpHandler),
     ]
   }, [])
+  
+  const devLog = console.log
 
-  const gameMessageHandler = (gameObjects) => {
-    console.log(gameObjects)
-    setPlayerData(gameObjects)
+  // const gameMessageHandler = (gameObjects) => {
+  //   console.log(gameObjects)
+  //   setPlayerData(gameObjects)
+  // }
+
+  // Register user in room
+  // TODO: Room must be selectable
+  socket.emit("roomConnection", { name: "Michael", room: 'myRoom1' });
+
+
+  // Handler for key press
+  // Sending @type and @payload to channel keyPressed
+  const keyUpHandler = ({repeat, keyCode}) => {
+    if (repeat) return;
+socket.emit('keyPressed', {type: 'KEY_UP', payload: keyCode})
+  }
+  const keyDownHandler = ({repeat, keyCode}) => {
+    if (repeat) return;
+    console.log('######')
+socket.emit('keyPressed', {type: 'KEY_DOWN', payload: keyCode})
   }
 
-  const keyUpHandler = ({keyCode}) => socket.emit('playerData', keyCode, 'UP')
-  const keyDownHandler = ({keyCode}) => socket.emit('gameMessage', {type: 'KEY_CODE', keyCode})
+  const gameDataHandler = setPlayerData
 
-  const playerDataHandler = (data) => {
-    (data && data.direction === 'UP') ? onKeyUp(data) : onKeyDown(data)
-  }
+  // const playerDataHandler = (data) => {
+  //   (data && data.direction === 'UP') ? onKeyUp(data) : onKeyDown(data)
+  // }
 
-  const roomHandler = (user) => setRoom(user.room)
+  // const roomHandler = (user) => setRoom(user.room)
 
-  const chatMessageHandler = message => setMessages(old => [...old, message])
+  // const chatMessageHandler = message => setMessages(old => [...old, message])
 
-  const clickHandler = () => {
-    socket.emit('chatMessage', newMessage)
-    setNewMessage("");
-  };
+  // const clickHandler = () => {
+  //   socket.emit('chatMessage', newMessage)
+  //   setNewMessage("");
+  // };
 
-  const selectRoomHandler = () => {
-    socket.emit("roomConnection", { name: "Michael", room: 'myRoom1' });
-  }
 
+        // <button onClick={clickHandler}>Send</button>
+        // <button onClick={()=> socket.emit('gameMessage', {type: 'START'})}>Start Game</button>
+      // <button onClick={selectRoomHandler}>Enter room 1</button>
   return (
     <div>
       <h1>Hello World</h1>
       <h2>{'Room: ' + room}</h2>
-      <button onClick={selectRoomHandler}>Enter room 1</button>
       <div>
         <input
           type="text"
           value={newMessage}
           onChange={({ target: { value } }) => setNewMessage(value)}
         />
-        <button onClick={clickHandler}>Send</button>
-        <button onClick={()=> socket.emit('gameMessage', {type: 'START'})}>Start Game</button>
       </div>
       <ul>
         {messages.map((msg, index) => (

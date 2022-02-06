@@ -68,29 +68,6 @@ function drawBall(position, radius, color) {
   ctx.fill();
 }
 
-
-function onKeyDown({keyCode, player}) {
-  switch (keyCode) {
-    case 38:
-      (player === 'player1') ? player1.upArrowPressed = true : player2.upArrowPressed = true
-      break;
-    case 40:
-      (player === 'player1') ? player1.downArrowPressed = true : player2.downArrowPressed = true
-      break;
-  }
-}
-
-function onKeyUp({keyCode, player}) {
-  switch (keyCode) {
-    case 38:
-      (player === 'player1') ? player1.upArrowPressed = false : player2.upArrowPressed = false
-      break;
-    case 40:
-      (player === 'player1') ? player1.downArrowPressed = false : player2.downArrowPressed = false
-      break;
-  }
-}
-
 function reset() {
   // reset ball's value to older values
   ball.x = canvas.width / 2;
@@ -198,6 +175,7 @@ function render() {
   // draw player2 score
   drawScore(3 * canvas.width / 4, canvas.height / 6, player2.score);
   // draw user paddle
+  // console.log('player1: ', player1)
   drawPaddle(player1)
   drawPaddle(player2)
   // draw ball
@@ -206,7 +184,7 @@ function render() {
 
 // gameLoop
 function gameLoop() {
-  update();
+  // update();
   render();
   requestAnimationFrame(gameLoop)
 }
@@ -215,17 +193,15 @@ const runPingPong = gameLoop
 
 const getPlayerData = () => ({player1, player2, ball}) 
 
-const setPlayerData = (gameObjects) => {
-  let [_player1, _player2, _ball] = gameObjects
-  player1 = {...player1, ..._player1}
-  player2 = {...player2, ..._player2}
-  ball = {...ball, ..._ball}
+const setPlayerData = (position) => {
+  console.log('position: ', position)
+  console.log('position: ', typeof position)
+  player1 = {...player1, position}
 }
+
 
 export {
   runPingPong,
-  onKeyDown,
-  onKeyUp,
   getPlayerData,
   setPlayerData
 }

@@ -4,9 +4,9 @@ import http from "http";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { Server } from "socket.io";
-import { of, fromEvent } from "rxjs";
+import { of, merge, fromEvent } from "rxjs";
 import { map, switchMap, mergeMap, takeUntil } from "rxjs/operators";
-import { positionSubjects$, keyCodeHandler } from "./gameData.mjs";
+import {gameData ,player1Subject} from "./gameData.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -60,16 +60,25 @@ connection$.subscribe(async ({ io, client }) => {
 
 const users = [];
 
+// Room Connection
+// When enter in room, user is registered
+// TODO: 
+// better handling for identify users
+// Can we avoid global user?
+// For every game there should be a unique room
+// Limit amount of users
 listenOnConnect("roomConnection").subscribe(({ io, client, data }) => {
-  const user = { ...data, id: client.id };
+  const player = (users.length === 0) ? "PLAYER1" : "PLAYER2"
+  const user = { ...data, id: client.id, player };
   users.push(user);
+  client.emit("develop", `user: ${JSON.stringify(user)}`);
 
 
-  client.join(user.room);
-  client.to(user.room).emit("message", `Message to all except me`);
-  io.in(user.room).emit("message", "Message to all");
+  // client.join(user.room);
+  // client.to(user.room).emit("message", `Message to all except me`);
+  // io.in(user.room).emit("message", "Message to all");
 
-  io.in(user.room).emit("roomConnection", data);
+  // io.in(user.room).emit("roomConnection", data);
 });
 
 listenOnConnect("chatMessage").subscribe(({ io, client, data }) => {
@@ -89,16 +98,23 @@ listenOnConnect("playerData").subscribe(({ io, client, data }) => {
   io.in(user.room).emit("playerData", { player, keyCode, direction });
 });
 
-listenOnConnect("gameMessage").subscribe(({ io, client, data }) => {
-  const user = users.find((user) => user.id === client.id);
+const route = {PLAYER1: player1Subject}
 
-  if (data.type === "START") {
-    positionSubjects$.subscribe((ps) => {
-      io.in(user.room).emit("gameMessage", ps);
-    });
-  } else if (data.type === 'KEY_CODE') {
-    keyCodeHandler(data)
-  }
+  // client id muss mit uebergeben werden
+listenOnConnect("keyPressed").subscribe(({ io, client, data }) => {
+  // client.emit("develop", `users: ${JSON.stringify(users.length)}`);
+  const user = users.filter((user) => user.id === client.id)
+  console.log('user: ', user)
+  user.map(({player}) => route[player].next(data))
 });
+
+connection$.subscribe(({io, client}) => {
+  gameData.subscribe(x => {
+
+  client.emit("gameData", x[0].position)
+  })
+})
+
+
 
 server.listen(3000, () => console.log("Listen on port 3000"));

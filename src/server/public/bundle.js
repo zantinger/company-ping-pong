@@ -7734,36 +7734,6 @@
 	  ctx.fill();
 	}
 
-	function onKeyDown({
-	  keyCode,
-	  player
-	}) {
-	  switch (keyCode) {
-	    case 38:
-	      player === 'player1' ? player1.upArrowPressed = true : player2.upArrowPressed = true;
-	      break;
-
-	    case 40:
-	      player === 'player1' ? player1.downArrowPressed = true : player2.downArrowPressed = true;
-	      break;
-	  }
-	}
-
-	function onKeyUp({
-	  keyCode,
-	  player
-	}) {
-	  switch (keyCode) {
-	    case 38:
-	      player === 'player1' ? player1.upArrowPressed = false : player2.upArrowPressed = false;
-	      break;
-
-	    case 40:
-	      player === 'player1' ? player1.downArrowPressed = false : player2.downArrowPressed = false;
-	      break;
-	  }
-	}
-
 
 	function render() {
 	  // set a style
@@ -7778,6 +7748,7 @@
 	  drawScore(canvas.width / 4, canvas.height / 6, player1.score); // draw player2 score
 
 	  drawScore(3 * canvas.width / 4, canvas.height / 6, player2.score); // draw user paddle
+	  // console.log('player1: ', player1)
 
 	  drawPaddle(player1);
 	  drawPaddle(player2); // draw ball
@@ -7787,22 +7758,18 @@
 
 
 	function gameLoop() {
+	  // update();
 	  render();
 	  requestAnimationFrame(gameLoop);
 	}
 
 	const runPingPong = gameLoop;
 
-	const setPlayerData = gameObjects => {
-	  let [_player1, _player2, _ball] = gameObjects;
+	const setPlayerData = position => {
+	  console.log('position: ', position);
+	  console.log('position: ', typeof position);
 	  player1 = { ...player1,
-	    ..._player1
-	  };
-	  player2 = { ...player2,
-	    ..._player2
-	  };
-	  ball = { ...ball,
-	    ..._ball
+	    position
 	  };
 	};
 
@@ -7819,52 +7786,68 @@
 	  react.exports.useEffect(() => {
 	    window.addEventListener('keydown', keyDownHandler);
 	    window.addEventListener('keyup', keyUpHandler);
-	    socket.on('roomConnection', roomHandler);
-	    socket.on('chatMessage', chatMessageHandler);
-	    socket.on('playerData', playerDataHandler);
-	    socket.on('gameMessage', gameMessageHandler);
-	    return () => [socket.off('roomConnection', roomHandler), socket.off('chatMessage', chatMessageHandler), socket.off('playerData', playerDataHandler), socket.off('gameMessage', gameMessageHandler), window.removeEventListener('keydown', keyDownHandler), window.removeEventListener('keyup', keyUpHandler)];
-	  }, []);
+	    socket.on('develop', devLog);
+	    socket.on('gameData', gameDataHandler); // socket.on('roomConnection', roomHandler)
+	    // socket.on('chatMessage', chatMessageHandler)
+	    // socket.on('playerData', playerDataHandler)
+	    // socket.on('gameMessage', gameMessageHandler)
 
-	  const gameMessageHandler = gameObjects => {
-	    console.log(gameObjects);
-	    setPlayerData(gameObjects);
-	  };
+	    return () => [// socket.off('roomConnection', roomHandler),
+	    // socket.off('chatMessage', chatMessageHandler),
+	    // socket.off('playerData', playerDataHandler),
+	    // socket.off('gameMessage', gameMessageHandler),
+	    socket.off('gameData', gameDataHandler), socket.off('develop', devLog), window.removeEventListener('keydown', keyDownHandler), window.removeEventListener('keyup', keyUpHandler)];
+	  }, []);
+	  const devLog = console.log; // const gameMessageHandler = (gameObjects) => {
+	  //   console.log(gameObjects)
+	  //   setPlayerData(gameObjects)
+	  // }
+	  // Register user in room
+	  // TODO: Room must be selectable
+
+	  socket.emit("roomConnection", {
+	    name: "Michael",
+	    room: 'myRoom1'
+	  }); // Handler for key press
+	  // Sending @type and @payload to channel keyPressed
 
 	  const keyUpHandler = ({
+	    repeat,
 	    keyCode
-	  }) => socket.emit('playerData', keyCode, 'UP');
-
-	  const keyDownHandler = ({
-	    keyCode
-	  }) => socket.emit('gameMessage', {
-	    type: 'KEY_CODE',
-	    keyCode
-	  });
-
-	  const playerDataHandler = data => {
-	    data && data.direction === 'UP' ? onKeyUp(data) : onKeyDown(data);
-	  };
-
-	  const roomHandler = user => setRoom(user.room);
-
-	  const chatMessageHandler = message => setMessages(old => [...old, message]);
-
-	  const clickHandler = () => {
-	    socket.emit('chatMessage', newMessage);
-	    setNewMessage("");
-	  };
-
-	  const selectRoomHandler = () => {
-	    socket.emit("roomConnection", {
-	      name: "Michael",
-	      room: 'myRoom1'
+	  }) => {
+	    if (repeat) return;
+	    socket.emit('keyPressed', {
+	      type: 'KEY_UP',
+	      payload: keyCode
 	    });
 	  };
 
-	  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", null, "Hello World"), /*#__PURE__*/React.createElement("h2", null, 'Room: ' + room), /*#__PURE__*/React.createElement("button", {
-	    onClick: selectRoomHandler
-	  }, "Enter room 1"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("input", {
+	  const keyDownHandler = ({
+	    repeat,
+	    keyCode
+	  }) => {
+	    if (repeat) return;
+	    console.log('######');
+	    socket.emit('keyPressed', {
+	      type: 'KEY_DOWN',
+	      payload: keyCode
+	    });
+	  };
+
+	  const gameDataHandler = setPlayerData; // const playerDataHandler = (data) => {
+	  //   (data && data.direction === 'UP') ? onKeyUp(data) : onKeyDown(data)
+	  // }
+	  // const roomHandler = (user) => setRoom(user.room)
+	  // const chatMessageHandler = message => setMessages(old => [...old, message])
+	  // const clickHandler = () => {
+	  //   socket.emit('chatMessage', newMessage)
+	  //   setNewMessage("");
+	  // };
+	  // <button onClick={clickHandler}>Send</button>
+	  // <button onClick={()=> socket.emit('gameMessage', {type: 'START'})}>Start Game</button>
+	  // <button onClick={selectRoomHandler}>Enter room 1</button>
+
+	  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", null, "Hello World"), /*#__PURE__*/React.createElement("h2", null, 'Room: ' + room), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("input", {
 	    type: "text",
 	    value: newMessage,
 	    onChange: ({
@@ -7872,13 +7855,7 @@
 	        value
 	      }
 	    }) => setNewMessage(value)
-	  }), /*#__PURE__*/React.createElement("button", {
-	    onClick: clickHandler
-	  }, "Send"), /*#__PURE__*/React.createElement("button", {
-	    onClick: () => socket.emit('gameMessage', {
-	      type: 'START'
-	    })
-	  }, "Start Game")), /*#__PURE__*/React.createElement("ul", null, messages.map((msg, index) => /*#__PURE__*/React.createElement("li", {
+	  })), /*#__PURE__*/React.createElement("ul", null, messages.map((msg, index) => /*#__PURE__*/React.createElement("li", {
 	    key: index
 	  }, msg))));
 	};

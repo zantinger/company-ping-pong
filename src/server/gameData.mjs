@@ -6,7 +6,7 @@ import {
   interval,
   Subject,
 } from "rxjs";
-import { map, switchMap, mergeMap, takeUntil } from "rxjs/operators";
+import { scan, tap, map, switchMap, mergeMap, takeUntil } from "rxjs/operators";
 // data for canvas 1000 / 600
 // player1, player2, ball
 // 10 250 980 250 500 300
@@ -27,6 +27,9 @@ let player2 = {
   accel: [0, 0],
   name: "player2",
 };
+
+let players = {player1}
+
 let ball = {
   position: [canvas[0] / 2, canvas[1] / 2],
   velocity: [3, 3],
@@ -34,14 +37,10 @@ let ball = {
   name: "ball",
 };
 
-let gameObjects = [player1, player2, ball];
-
-const update = (p) => {
+const update = (fn) => state => {
+  let p = fn(state)
+  // console.log(p)
   let [[px, py], [vx, vy], [ax, ay]] = [p.position, p.velocity, p.accel];
-
-  if (p.name === 'player1') {
-  console.log(`vor update. positiosn: ${p.position}, velocity: ${p.velocity}, accel: ${p.accel}`)
-  }
 
   vx = vx + ax;
   vy = vy + ay;
@@ -50,23 +49,10 @@ const update = (p) => {
   let velocity = [vx, vy];
   let accel = [0, 0];
 
-  if (p.name === 'player1') {
-  console.log(`nach update. positiosn: ${position}, velocity: ${velocity}, accel: ${accel}`)
-  }
-
-  return { ...p, position, velocity, accel };
+  return { ...p, position, velocity, accel, name: p.name };
 };
 
 const Position = ({ position, name }) => ({ position, name });
-
-const updateGameObjects = () => {
-  gameObjects = gameObjects
-    .map((obj) => borderCollision(obj))
-    .map((obj) => update(obj));
-  // .map(obj => Position(obj))
-
-  positionSubjects$.next(gameObjects.map(Position));
-};
 
 const borderCollision = (obj) => {
   if (obj.name === "ball") {
@@ -79,31 +65,40 @@ const borderCollision = (obj) => {
     return obj;
 };
 
-const keyCodeHandler = ({ keyCode }) => {
-  gameObjects = gameObjects.map((obj) => {
-    if (keyCode === 38) {
-      obj.position = [obj.position[0], obj.position[1] + 8];
-      return obj
-    } else if (keyCode === 40) {
-      obj.position = [obj.position[0], obj.position[1] - 8];
-      return obj
-    } else {
+const keyUp = (keyCode) => player => {
+  const [x,y] = player.accel
+  const value = (keyCode === 38) ? -8 : (keyCode === 40) ? 8 : 0
+  return {...player, accel: [x + 0, y + value]}
+}
+const keyDown = (keyCode) => player => {
+  console.log("xxxxxxxxxxx")
+  const [x,y] = player.accel
+  const value = (keyCode === 38) ? 8 : (keyCode === 40) ? -8 : 0
+  return {...player, accel: [x + 0, y + value]}
+}
+const start = x => players => ({...players})
 
-      return obj
-    }
-  });
-  positionSubjects$.next(gameObjects.map(Position));
-};
+const route =  {START: start, KEY_UP: keyUp, KEY_DOWN: keyDown}
+const playerRoute = {PLAYER1: player1, PALAYER2: player2}
 
-const player1Subject = new BehaviorSubject(Position(player1));
-const player2Subject = new BehaviorSubject(Position(player2));
-const ballSubject = new BehaviorSubject(Position(ball));
+const player1Subject = new BehaviorSubject({type: "START", payload: null});
+// const player2Subject = new BehaviorSubject(Position(player2));
+const ballSubject = new BehaviorSubject({type: null});
 
-const positionSubjects$ = new BehaviorSubject([
-  Position(player1),
-  Position(player2),
-  Position(ball),
-]);
-// combineLatest([player1Subject, player2Subject, ballSubject])
+let player1$ = player1Subject.pipe(
+  map((obj) => route[obj.type](obj.payload)),
+  map(obj => update(obj)),
+  scan((acc, fn) => fn(acc), player1)
+)
 
-export { positionSubjects$, keyCodeHandler };
+let i = interval(1000)
+
+
+let ball$ = ballSubject
+
+i.subscribe(x => ballSubject.next())
+
+let gameData = combineLatest([player1$, ball$])
+
+
+export { gameData,  player1Subject };
