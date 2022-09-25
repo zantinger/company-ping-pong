@@ -1,85 +1,33 @@
-import express from "express";
-import path from "path";
-import http from "http";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-import { Server } from "socket.io";
-import { of, fromEvent } from "rxjs";
-import { map, switchMap, mergeMap, takeUntil } from "rxjs/operators";
+import { map } from "rxjs/operators";
+import { connection$, listenOnConnect } from "./connection.mjs";
+import { httpServer } from './server.mjs'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const app = express();
-const server = http.createServer(app);
-const io$ = of(new Server(server));
-
-const Fn = (g) => ({
-  map: (f) => Fn((x) => f(g(x))),
-  chain: (f) => Fn((x) => f(g(x)).run(x)),
-  concat: (other) => Fn((x) => g(x).concat(other.run(x))),
-  run: g,
-});
-Fn.ask = Fn((x) => x);
-Fn.of = (x) => Fn(() => x);
-
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/", function (req, res) {
-  res.sendFile(path.join(__dirname, "public/index.html"));
-});
-
-const connection$ = io$.pipe(
-  switchMap((io) =>
-    fromEvent(io, "connection").pipe(map((client) => ({ io, client })))
-  )
+const availableRooms$ = connection$.pipe(
+  map(({ io }) => {
+    const rooms = Array.from(io.sockets.adapter.rooms)
+      .filter((room) => !room[1].has(room[0]))
+      .map((x) => x[0]);
+    return { rooms, io };
+  })
 );
 
-const disconnect$ = connection$.pipe(
-  mergeMap(({ client }) =>
-    fromEvent(client, "disconnect").pipe(map(() => client))
-  )
-);
-
-// On connection, listen for event
-function listenOnConnect(event) {
-  return connection$.pipe(
-    mergeMap(({ io, client }) =>
-      fromEvent(client, event).pipe(
-        takeUntil(fromEvent(client, "disconnect")),
-        map((data) => ({ io, client, data }))
-      )
-    )
-  );
-}
-
-connection$.subscribe(async({ io, client }) => {
-  const x = await io.allSockets()
+availableRooms$.subscribe(({ rooms, io }) => {
+  console.log("data ", rooms);
+  io.emit("available rooms", rooms);
 });
 
+listenOnConnect("create room").subscribe(({ client, data }) => {
+  client.join(data.roomName);
+  client.emit("room joined", data);
+});
 
-const users = []
+listenOnConnect("chat message").subscribe(({ client, data }) => {
+  console.log("pm ", data);
+  client.emit("foo", [{ author: "Mark", msg: "hello" }]);
+});
 
-listenOnConnect('roomConnection')
-  .subscribe(({io, client, data }) => {    
-    const user = {...data, id: client.id}
-    users.push(user)
+const PORT = process.env.PORT || 3000;
 
-    client.join(user.room)
-    client.to(user.room).emit("message", `Message to all except me`)
-    io.in(user.room).emit('message', 'Message to all')
-
-    io.in(user.room).emit('roomConnection', data)
-  })
-
-listenOnConnect('chatMessage')
-  .subscribe(({io, client, data}) => {
-    console.log(users)
-    console.log(client.id)
-    const user = users.find(user => user.id === client.id)
-
-    io.in(user.room).emit('chatMessage', data)
-  })
-
-
-server.listen(3000, () => console.log("Listen on port 3000"));
+httpServer.listen(PORT, () =>
+  console.log(`server listening at http://localhost:${PORT}`)
+);
