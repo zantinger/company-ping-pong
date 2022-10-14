@@ -1,6 +1,6 @@
-import { useMemo, useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext } from "react";
 import { SocketContext } from "./App";
-import { switchMap, map, of, fromEvent } from "rxjs";
+import { switchMap, map, fromEvent } from "rxjs";
 
 export const useSubscription = (source$, nextHandler) => {
   useEffect(() => {

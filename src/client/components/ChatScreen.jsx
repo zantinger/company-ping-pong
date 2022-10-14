@@ -1,17 +1,22 @@
 import { filter, BehaviorSubject, Subject, map, withLatestFrom } from "rxjs";
 import { useObservable, useSocketEmiter, useSocketListener } from "../utils";
 
+// Subject for user input
 const chatMessage$ = new BehaviorSubject("");
+
+// Subject for click
 const clickSending$ = new Subject();
+
 const messageOnClick$ = clickSending$.pipe(
   withLatestFrom(chatMessage$),
-  map((x) => x[1]),
-  filter((x) => !!x)
+  map(([_, msg]) => msg),
+  filter((msg) => !!msg)
 );
 
 const ChatScreen = ({ room }) => {
   const chatValue = useObservable(chatMessage$, "");
 
+  // Emit chat msg to server and clear input
   useSocketEmiter(messageOnClick$, ({ socket, data }) => {
     socket.emit("chat message", data);
     chatMessage$.next("");
