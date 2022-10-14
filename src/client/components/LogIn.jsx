@@ -1,24 +1,30 @@
-import { useEffect } from "react";
 import { Subject, BehaviorSubject, map, mergeMap, switchMap } from "rxjs";
-// import { emitOnConnect, listenOnConnect } from "../socket";
-import {
-  useObservable,
-  useSocketListener,
-  useSocketEmiter,
-} from "../utils.js";
+import { useObservable, useSocketListener, useSocketEmiter } from "../utils.js";
 
+// Subject's for click event
 const onCreateRoom = new Subject();
+const onSelectRoom = new Subject();
+const onChangeOption$ = new Subject();
+
+// Subject's for user input
 const userName$ = new BehaviorSubject("");
 const roomName$ = new BehaviorSubject("");
+
+// Merge username and room name
 const userAndRoom$ = userName$.pipe(
   mergeMap((userName) =>
     roomName$.pipe(map((roomName) => [userName, roomName]))
   )
 );
+
 const validUserAndRoom$ = userAndRoom$.pipe(
   map(([userName, roomName]) => !(!!userName && !!roomName))
 );
 
+// onChangeOption$.subscribe(console.log)
+userName$.subscribe(console.log);
+
+// On btn click, switch stream to username and room name
 const createRoom$ = onCreateRoom.pipe(
   switchMap(() =>
     userName$.pipe(
@@ -29,10 +35,25 @@ const createRoom$ = onCreateRoom.pipe(
   )
 );
 
+// TODO
+// const selectRoom$ = onSelectRoom.pipe(
+//   switchMap(() =>
+//     userName$.pipe(
+//       mergeMap((userName) =>
+//         onChangeOption$.pipe(map((roomName) => ({ roomName, userName })))
+//       )
+//     )
+//   )
+// );
+
 const LogIn = () => {
+  // Only enable btn when we have name for user and room
   const isCreateRoomDisabled = useObservable(validUserAndRoom$, false);
+
+  // If there are already rooms open
   const rooms = useSocketListener("available rooms", []);
 
+  // Emit data when username and room name are defined
   useSocketEmiter(createRoom$, ({ socket, data }) =>
     socket.emit("create room", data)
   );
@@ -67,7 +88,11 @@ const LogIn = () => {
         </fieldset>
         <fieldset className="column">
           <label htmlFor="selectRoom">Rooms</label>
-          <select id="selectRoom" defaultValue={"default"}>
+          <select
+            id="selectRoom"
+            onChange={(e) => onChangeOption$.next(e.target.value)}
+            defaultValue={"default"}
+          >
             <option disabled value={"default"}>
               Choose a room
             </option>
@@ -75,7 +100,9 @@ const LogIn = () => {
               <option>{room}</option>
             ))}
           </select>
-          <button disabled={true}>Enter Room</button>
+          <button disabled={false} onClick={(e) => onSelectRoom.next(e)}>
+            Enter Room
+          </button>
         </fieldset>
       </div>
     </form>
