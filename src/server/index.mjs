@@ -2,27 +2,32 @@ import { map } from "rxjs/operators";
 import { connection$, listenOnConnect } from "./connection.mjs";
 import { httpServer } from './server.mjs'
 
-const availableRooms$ = connection$.pipe(
-  map(({ io }) => {
-    const rooms = Array.from(io.sockets.adapter.rooms)
+const getRoomsFromAdapter = io => 
+    Array.from(io.sockets.adapter.rooms)
       .filter((room) => !room[1].has(room[0]))
       .map((x) => x[0]);
+
+const availableRooms$ = connection$.pipe(
+  map(({ io }) => {
+    const rooms = getRoomsFromAdapter(io)
     return { rooms, io };
   })
 );
 
 availableRooms$.subscribe(({ rooms, io }) => {
-  console.log("data ", rooms);
   io.emit("available rooms", rooms);
 });
 
-listenOnConnect("create room").subscribe(({ client, data }) => {
+listenOnConnect("create room").subscribe(({ io, client, data }) => {
   client.join(data.roomName);
   client.emit("room joined", data);
+  let rooms = new Set(getRoomsFromAdapter(io))
+  rooms = Array.from(rooms.add(data.roomName))
+  // TODO send only to other
+  io.emit("available rooms", rooms);
 });
 
 listenOnConnect("chat message").subscribe(({ client, data }) => {
-  console.log("pm ", data);
   client.emit("foo", [{ author: "Mark", msg: "hello" }]);
 });
 

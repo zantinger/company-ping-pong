@@ -1,14 +1,15 @@
 import { Subject, BehaviorSubject, map, mergeMap, switchMap } from "rxjs";
 import { useObservable, useSocketListener, useSocketEmiter } from "../utils.js";
+import { useEffect } from "react";
 
 // Subject's for click event
 const onCreateRoom = new Subject();
-const onSelectRoom = new Subject();
-const onChangeOption$ = new Subject();
+const onJoinRoom$ = new Subject();
 
 // Subject's for user input
 const userName$ = new BehaviorSubject("");
 const roomName$ = new BehaviorSubject("");
+const onChangeOption$ = new BehaviorSubject("");
 
 // Merge username and room name
 const userAndRoom$ = userName$.pipe(
@@ -21,9 +22,6 @@ const validUserAndRoom$ = userAndRoom$.pipe(
   map(([userName, roomName]) => !(!!userName && !!roomName))
 );
 
-// onChangeOption$.subscribe(console.log)
-userName$.subscribe(console.log);
-
 // On btn click, switch stream to username and room name
 const createRoom$ = onCreateRoom.pipe(
   switchMap(() =>
@@ -35,26 +33,30 @@ const createRoom$ = onCreateRoom.pipe(
   )
 );
 
-// TODO
-// const selectRoom$ = onSelectRoom.pipe(
-//   switchMap(() =>
-//     userName$.pipe(
-//       mergeMap((userName) =>
-//         onChangeOption$.pipe(map((roomName) => ({ roomName, userName })))
-//       )
-//     )
-//   )
-// );
+const selectRoom$ = onJoinRoom$.pipe(
+  switchMap(() =>
+    userName$.pipe(
+      mergeMap((userName) =>
+        onChangeOption$.pipe(map((roomName) => ({ roomName, userName })))
+      )
+    )
+  )
+);
 
 const LogIn = () => {
   // Only enable btn when we have name for user and room
   const isCreateRoomDisabled = useObservable(validUserAndRoom$, false);
+  // const isJoinRoomDisabled = useObservable(validUserAndRoom$, false);
 
   // If there are already rooms open
   const rooms = useSocketListener("available rooms", []);
 
   // Emit data when username and room name are defined
   useSocketEmiter(createRoom$, ({ socket, data }) =>
+    socket.emit("create room", data)
+  );
+
+  useSocketEmiter(selectRoom$, ({ socket, data }) =>
     socket.emit("create room", data)
   );
 
@@ -97,10 +99,14 @@ const LogIn = () => {
               Choose a room
             </option>
             {rooms.map((room) => (
-              <option>{room}</option>
+              <option key={room}>{room}</option>
             ))}
           </select>
-          <button disabled={false} onClick={(e) => onSelectRoom.next(e)}>
+          <button
+            type="button"
+            disabled={false}
+            onClick={(e) => onJoinRoom$.next(e)}
+          >
             Enter Room
           </button>
         </fieldset>
