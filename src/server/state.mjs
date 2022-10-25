@@ -31,20 +31,34 @@ export class RoomState extends State {
     if (RoomState._instance) {
       return RoomState._instance;
     }
-    super({ rooms: [] });
+    super({ rooms: {} });
     RoomState._instance = this;
   }
 
-  addRoom(name) {
-    this.setState({ rooms: [...this.state.rooms, { name, messages: [] }] });
+  createRoom({ room, user }) {
+    // TODO: room exist
+    this.setState({ rooms: { ...this.state.rooms, [room]: [user] } });
+    return room
   }
 
-  removeRoom(name) {
-    this.setState({
-      rooms: this.state.rooms.filter((room) => room.name !== name),
-    });
+  addUserToRoom({ room, user }) {
+    const rooms = this.state.rooms;
+    const users = [...rooms[room], user];
+
+    this.setState({ rooms: { ...rooms, [room]: users } });
+  }
+
+  removeUserFromRoom({ room, user }) {
+    const rooms = this.state.rooms;
+    const users = [...rooms[room].filter((u) => u !== user)];
+
+    if (users.length === 0) {
+      delete rooms[room];
+      this.setState({ rooms: { ...rooms } });
+    } else {
+      this.setState({ rooms: { ...rooms, [room]: users } });
+    }
   }
 
   rooms$ = this.select((state) => state.rooms);
 }
-

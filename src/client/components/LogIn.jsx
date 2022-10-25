@@ -1,63 +1,53 @@
 import { Subject, BehaviorSubject, map, mergeMap, switchMap } from "rxjs";
 import { useObservable, useSocketListener, useSocketEmiter } from "../utils.js";
-import { useEffect } from "react";
 
 // Subject's for click event
-const onCreateRoom = new Subject();
+const onCreateRoom$ = new Subject();
 const onJoinRoom$ = new Subject();
 
 // Subject's for user input
-const userName$ = new BehaviorSubject("");
-const roomName$ = new BehaviorSubject("");
+const user$ = new BehaviorSubject("");
+const room$ = new BehaviorSubject("");
 const onChangeOption$ = new BehaviorSubject("");
 
-// Merge username and room name
-const userAndRoom$ = userName$.pipe(
-  mergeMap((userName) =>
-    roomName$.pipe(map((roomName) => [userName, roomName]))
-  )
-);
-
-const validUserAndRoom$ = userAndRoom$.pipe(
-  map(([userName, roomName]) => !(!!userName && !!roomName))
-);
-
-// On btn click, switch stream to username and room name
-const createRoom$ = onCreateRoom.pipe(
+// Generic fn for switching streams
+const switchUserAndRoom = (source$) =>
   switchMap(() =>
-    userName$.pipe(
-      mergeMap((userName) =>
-        roomName$.pipe(map((roomName) => ({ roomName, userName })))
-      )
+    user$.pipe(
+      mergeMap((user) => source$.pipe(map((room) => ({ user, room }))))
     )
-  )
-);
+  );
 
-const selectRoom$ = onJoinRoom$.pipe(
-  switchMap(() =>
-    userName$.pipe(
-      mergeMap((userName) =>
-        onChangeOption$.pipe(map((roomName) => ({ roomName, userName })))
-      )
-    )
-  )
-);
+// Click streams for create and join room
+const createRoom$ = onCreateRoom$.pipe(switchUserAndRoom(room$));
+const joinRoom$ = onJoinRoom$.pipe(switchUserAndRoom(onChangeOption$));
 
 const LogIn = () => {
-  // Only enable btn when we have name for user and room
-  const isCreateRoomDisabled = useObservable(validUserAndRoom$, false);
-  // const isJoinRoomDisabled = useObservable(validUserAndRoom$, false);
+  // Get already created rooms
+  const rooms = useSocketListener("available rooms", {});
+  const room = useObservable(room$, "");
+  const user = useObservable(user$, "");
+  const doRoomAlreadyExists = rooms[room] !== undefined;
+  const optSelected = useObservable(onChangeOption$, null);
 
-  // If there are already rooms open
-  const rooms = useSocketListener("available rooms", []);
+  // Only enable btn when conditions are fulfilled
+  const isBtnCreateDisabled = !(
+    user.length > 2 &&
+    room.length > 2 &&
+    !doRoomAlreadyExists
+  );
+  const isBtnJoinDisabled = !(
+    user.length > 2 && rooms[optSelected] !== undefined
+  );
 
-  // Emit data when username and room name are defined
+  // Emit user- and room names for creating room.
   useSocketEmiter(createRoom$, ({ socket, data }) =>
     socket.emit("create room", data)
   );
 
-  useSocketEmiter(selectRoom$, ({ socket, data }) =>
-    socket.emit("create room", data)
+  // Emit user- and room names for joining room.
+  useSocketEmiter(joinRoom$, ({ socket, data }) =>
+    socket.emit("join room", data)
   );
 
   return (
@@ -68,46 +58,50 @@ const LogIn = () => {
           <input
             id="username"
             type="text"
-            onInput={(e) => userName$.next(e.target.value)}
+            onInput={(e) => user$.next(e.target.value)}
           />
         </fieldset>
       </div>
       <div className="row">
         <fieldset className="column">
-          <label htmlFor="roomName">Room Name</label>
+          <label htmlFor="room">Room Name</label>
           <input
-            id="roomName"
+            id="room"
             type="text"
-            onInput={(e) => roomName$.next(e.target.value)}
+            className={doRoomAlreadyExists ? "error" : ""}
+            onInput={(e) => room$.next(e.target.value)}
           />
+          {doRoomAlreadyExists && (
+            <div className="error-text">Name already exists</div>
+          )}
           <button
             type="button"
-            disabled={isCreateRoomDisabled}
-            onClick={(e) => onCreateRoom.next(e)}
+            disabled={isBtnCreateDisabled}
+            onClick={(e) => onCreateRoom$.next(e)}
           >
             Create Room
           </button>
         </fieldset>
         <fieldset className="column">
-          <label htmlFor="selectRoom">Rooms</label>
+          <label htmlFor="joinRoom">Rooms</label>
           <select
-            id="selectRoom"
+            id="joinRoom"
             onChange={(e) => onChangeOption$.next(e.target.value)}
             defaultValue={"default"}
           >
             <option disabled value={"default"}>
               Choose a room
             </option>
-            {rooms.map((room) => (
-              <option key={room}>{room}</option>
+            {Object.entries(rooms).map(([name, _]) => (
+              <option key={name}>{name}</option>
             ))}
           </select>
           <button
             type="button"
-            disabled={false}
+            disabled={isBtnJoinDisabled}
             onClick={(e) => onJoinRoom$.next(e)}
           >
-            Enter Room
+            Join Room
           </button>
         </fieldset>
       </div>
