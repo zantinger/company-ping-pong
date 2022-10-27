@@ -17,6 +17,17 @@ export const useSubscription = (source$, nextHandler) => {
   }, [source$]);
 };
 
+export const createObservable = (value) => {
+    console.log("V1 ", value)
+  useEffect(() => {
+    // source$.next(value)
+    console.log("V ", value)
+    return () => {}
+  }, [value])
+
+  return 'foo'
+}
+
 export const useObservable = (source$, initial) => {
   const [value, setValue] = useState(initial);
 

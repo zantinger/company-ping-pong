@@ -10,6 +10,12 @@ export const connection$ = io$.pipe(
   )
 );
 
+export const listenOnDisconnect$ = connection$.pipe(
+  mergeMap(({ io, client }) =>
+    fromEvent(client, "disconnect").pipe(map((_) => ({ io, client })))
+  )
+);
+
 export const listenOnConnect = (event) => {
   return connection$.pipe(
     mergeMap(({ io, client }) =>

@@ -56,3 +56,11 @@ body {
 .textfield input {
   background-color: white;
 }
+
+input.error {
+  border-color: red;
+}
+
+.error-text {
+  color: red;
+}

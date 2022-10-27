@@ -1,35 +1,56 @@
-import { map } from "rxjs/operators";
-import { connection$, listenOnConnect } from "./connection.mjs";
-import { httpServer } from './server.mjs'
+import { map, switchMap } from "rxjs/operators";
+import {
+  connection$,
+  listenOnConnect,
+  listenOnDisconnect$,
+} from "./connection.mjs";
+import { httpServer } from "./server.mjs";
+import { RoomState } from "./state.mjs";
 
-const getRoomsFromAdapter = io => 
-    Array.from(io.sockets.adapter.rooms)
-      .filter((room) => !room[1].has(room[0]))
-      .map((x) => x[0]);
+const roomService = new RoomState();
 
-const availableRooms$ = connection$.pipe(
-  map(({ io }) => {
-    const rooms = getRoomsFromAdapter(io)
-    return { rooms, io };
-  })
+// When user connects or new room is created, rooms will be emited.
+connection$
+  .pipe(
+    switchMap(({ io, client }) =>
+      roomService.rooms$.pipe(map((rooms) => ({ io, client, rooms })))
+    )
+  )
+  .subscribe(({ io, rooms }) => {
+    io.emit("available rooms", rooms);
+  });
+
+listenOnDisconnect$.subscribe(({ client }) => {
+  const { user, room } = client.data;
+  if (room) {
+    roomService.removeUserFromRoom({ user, room });
+  }
+});
+
+listenOnConnect("create room").subscribe(({ client, data: { user, room } }) => {
+  roomService.createRoom({ user, room });
+  // no single source of truth!!
+  client.data.room = room;
+  client.data.user = user;
+  client.join(room);
+  client.emit("room joined", { user, room });
+});
+
+listenOnConnect("join room").subscribe(({ client, data: { user, room } }) => {
+  roomService.addUserToRoom({ user, room });
+  // no single source of truth!!
+  client.data.room = room;
+  client.data.user = user;
+  client.join(room);
+  client.emit("room joined", { user, room });
+});
+
+listenOnConnect("chat message").subscribe(
+  ({ io, client, data: { message } }) => {
+    const { room, user } = client.data;
+    io.to(room).emit("chat message", { message, user });
+  }
 );
-
-availableRooms$.subscribe(({ rooms, io }) => {
-  io.emit("available rooms", rooms);
-});
-
-listenOnConnect("create room").subscribe(({ io, client, data }) => {
-  client.join(data.roomName);
-  client.emit("room joined", data);
-  let rooms = new Set(getRoomsFromAdapter(io))
-  rooms = Array.from(rooms.add(data.roomName))
-  // TODO send only to other
-  io.emit("available rooms", rooms);
-});
-
-listenOnConnect("chat message").subscribe(({ client, data }) => {
-  client.emit("foo", [{ author: "Mark", msg: "hello" }]);
-});
 
 const PORT = process.env.PORT || 3000;
 
