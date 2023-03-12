@@ -1,10 +1,8 @@
-import { useEffect } from "react";
 import { filter, BehaviorSubject, Subject, map, withLatestFrom } from "rxjs";
 import { useObservable, useSocketEmiter, useSocketListener } from "../utils";
 
 // Subject for user input
 const writtenMsg$ = new BehaviorSubject("");
-const msgHistory$ = new BehaviorSubject([]);
 
 // Subject for click
 const clickSend$ = new Subject();
@@ -15,28 +13,20 @@ const emitMsg$ = clickSend$.pipe(
   filter((msg) => !!msg)
 );
 
-const GameChat = () => {
-  const incomingMsg = useSocketListener("chat message", null);
+const Chat = () => {
+  const messages = useSocketListener("chat messages", []);
   const writtenMsg = useObservable(writtenMsg$, "");
-  const msgHistory = useObservable(msgHistory$, []);
-
-  // Messages are not stored by the server, so we handle it here.
-  // Every incoming message trigger the next method on msgHistory$.
-  useEffect(() => {
-    const h = msgHistory$.value;
-    msgHistory$.next(incomingMsg ? [...h, incomingMsg] : h);
-  }, [incomingMsg]);
 
   // Emit written message to server and clear input
   useSocketEmiter(emitMsg$, ({ socket, data }) => {
-    socket.emit("chat message", { message: data });
-    writtenMsg$.next("");
+    socket.emit("chat messages", { message: data });
+    writtenMsg$.next("")
   });
 
   return (
     <div className="chat">
       <div className="messages">
-        {msgHistory.map(({ user, message }, index) => (
+        {messages.map(({ user, message }, index) => (
           <div key={index}>
             <span>{user}:</span>
             <b>{message}</b>
@@ -55,4 +45,4 @@ const GameChat = () => {
   );
 };
 
-export default GameChat;
+export default Chat;

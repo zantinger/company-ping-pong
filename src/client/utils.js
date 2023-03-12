@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { SocketContext } from "./App";
-import { switchMap, map, fromEvent } from "rxjs";
+import { switchMap, map, fromEvent, distinctUntilChanged } from "rxjs";
 
 export const useSubscription = (source$, nextHandler) => {
   useEffect(() => {
@@ -17,17 +17,6 @@ export const useSubscription = (source$, nextHandler) => {
   }, [source$]);
 };
 
-export const createObservable = (value) => {
-    console.log("V1 ", value)
-  useEffect(() => {
-    // source$.next(value)
-    console.log("V ", value)
-    return () => {}
-  }, [value])
-
-  return 'foo'
-}
-
 export const useObservable = (source$, initial) => {
   const [value, setValue] = useState(initial);
 
@@ -41,7 +30,8 @@ export const useSocketEmiter = (observable$, nextHandler) => {
 
   return useSubscription(
     socket$.pipe(
-      switchMap((socket) => observable$.pipe(map((data) => ({ socket, data }))))
+      switchMap((socket) => observable$.pipe(map((data) => ({ socket, data })))),
+      distinctUntilChanged()
     ),
     nextHandler
   );
@@ -57,3 +47,4 @@ export const useSocketListener = (event, initial) => {
     initial
   );
 };
+
