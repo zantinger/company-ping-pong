@@ -64,3 +64,14 @@ input.error {
 .error-text {
   color: red;
 }
+
+.player {
+  height: 20px;
+  width: 5px;
+  background-color: red;
+  position: relative;
+}
+
+canvas {
+  margin-top: 30px;
+}
