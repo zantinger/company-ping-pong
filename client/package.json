@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "nodemon src/server/index.mjs"
+    "server": "nodemon src/server/index.mjs",
+    "start": "node src/server/index.mjs"
   },
   "repository": {
     "type": "git",
