@@ -24,10 +24,10 @@ const selectRoom$ = onSelectRoom$.pipe(switchUserAndRoom(onChangeOption$));
 
 const LogIn = () => {
   // Get already created rooms
-  const {rooms} = useSocketListener("available rooms", {});
+  const { rooms } = useSocketListener("available rooms", {});
   const room = useObservable(room$, "");
   const user = useObservable(user$, "");
-  const doRoomAlreadyExists = rooms?.includes(room)
+  const doRoomAlreadyExists = rooms?.includes(room);
   const optSelected = useObservable(onChangeOption$, null);
 
   // Only enable btn when conditions are fulfilled
@@ -36,9 +36,7 @@ const LogIn = () => {
     room.length > 2 &&
     !doRoomAlreadyExists
   );
-  const isBtnJoinDisabled = !(
-    user.length > 2 && rooms?.includes(optSelected)
-  );
+  const isBtnJoinDisabled = !(user.length > 2 && rooms?.includes(optSelected));
 
   // Emit user- and room names for creating room.
   useSocketEmiter(createRoom$, ({ socket, data }) =>
@@ -92,7 +90,7 @@ const LogIn = () => {
             <option disabled value={"default"}>
               Choose a room
             </option>
-            {rooms?.map(name => (
+            {rooms?.map((name) => (
               <option key={name}>{name}</option>
             ))}
           </select>

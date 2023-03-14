@@ -20,7 +20,7 @@ const Chat = () => {
   // Emit written message to server and clear input
   useSocketEmiter(emitMsg$, ({ socket, data }) => {
     socket.emit("chat messages", { message: data });
-    writtenMsg$.next("")
+    writtenMsg$.next("");
   });
 
   return (

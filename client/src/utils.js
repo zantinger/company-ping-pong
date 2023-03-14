@@ -30,7 +30,9 @@ export const useSocketEmiter = (observable$, nextHandler) => {
 
   return useSubscription(
     socket$.pipe(
-      switchMap((socket) => observable$.pipe(map((data) => ({ socket, data })))),
+      switchMap((socket) =>
+        observable$.pipe(map((data) => ({ socket, data })))
+      ),
       distinctUntilChanged()
     ),
     nextHandler
@@ -47,4 +49,3 @@ export const useSocketListener = (event, initial) => {
     initial
   );
 };
-
