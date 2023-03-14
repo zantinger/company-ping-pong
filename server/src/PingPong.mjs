@@ -34,7 +34,7 @@ export default class PingPong extends GameObjects {
   }
 
   updateVeloPlayer2(direction) {
-    this.veloPlayer2$.next(this.movement[direction]);    
+    this.veloPlayer2$.next(this.movement[direction]);
   }
 
   run(handler) {

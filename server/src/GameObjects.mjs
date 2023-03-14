@@ -8,8 +8,8 @@ import {
 } from "rxjs";
 import { ballCollision, getRandomInt } from "./utils.mjs";
 
-const AREA_WIDTH = 1000
-const AREA_HEIGHT = 600
+const AREA_WIDTH = 1000;
+const AREA_HEIGHT = 600;
 
 class Area {
   constructor(width, height) {
@@ -20,7 +20,7 @@ class Area {
 
 class Player {
   constructor(x) {
-    this.x = x; 
+    this.x = x;
     this.y = 0;
     this.color = "#FFF";
     this.width = 10;

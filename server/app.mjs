@@ -1,11 +1,7 @@
-import {
-  listenOnConnect,
-  listenOnDisconnect$,
-  connection$,
-} from "./connection.mjs";
-import { httpServer } from "./server.mjs";
-import Messages from "./Messages.mjs";
-import PingPong from "./PingPong.mjs";
+import { listenOnConnect, listenOnDisconnect$ } from "./src/connection.mjs";
+import { httpServer } from "./src/server.mjs";
+import Messages from "./src/Messages.mjs";
+import PingPong from "./src/PingPong.mjs";
 
 // simple solution to handle rooms
 const rooms = new Map();
@@ -43,7 +39,7 @@ listenOnConnect("create room").subscribe(({ io, client, data }) => {
 listenOnConnect("select room").subscribe(({ io, client, data }) => {
   const { user, room } = data;
   const roomHandler = rooms.get(room);
-  const nameGen = roomHandler.nameGen.next()
+  const nameGen = roomHandler.nameGen.next();
 
   if (nameGen.done) {
     // TODO
@@ -101,9 +97,8 @@ listenOnConnect("key pressed").subscribe(({ io, client, data }) => {
 });
 
 // TODO: cleanup room
-listenOnDisconnect$.subscribe(({ io, client }) => {
-  const { room } = client.data;
-  // TODO: stop game
+// TODO: stop game
+listenOnDisconnect$.subscribe(({ client }) => {
   console.log("listenOnDisconnect ", client.data);
 });
 
